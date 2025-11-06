@@ -70,34 +70,6 @@ jobs:
     
     - name: Display structure of downloaded files
       run: ls -R artifacts
-
-    - name: Rename artifacts to match their parent folder
-      shell: bash
-      run: |
-        echo "Renaming artifacts to match parent folder..."
-        for dir in artifacts/*; do
-          if [ -d "$dir" ]; then
-            base=$(basename "$dir")
-            file=$(find "$dir" -type f | head -n 1)
-            if [ -n "$file" ]; then
-              ext="${file##*.}"
-              # Add extension only if different from folder name
-              if [[ "$ext" != "$base" && "$file" == *.* ]]; then
-                newname="artifacts/${base}.${ext}"
-              else
-                newname="artifacts/${base}"
-              fi
-              mv "$file" "$newname"
-              echo "Renamed $file → $newname"
-            fi
-          fi
-        done
-
-        echo "Cleanup old folders..."
-        find artifacts/* -type d -empty -delete
-
-        echo "Final structure:"
-        ls -R artifacts
     
     - name: Create Release
       env:
@@ -117,7 +89,15 @@ jobs:
       shell: bash
       run: |
         echo "Uploading artifacts..."
-        for file in $(find artifacts -type f); do
-          echo "Uploading $file"
-          gh release upload ${{ github.event.inputs.version }} "$file" --repo ${{ github.repository }} --clobber
+        find artifacts -type f | while read file; do
+          parent=$(basename "$(dirname "$file")")
+          ext=""
+          # Preserve .exe extension if present
+          if [[ "$file" == *.exe ]]; then
+            ext=".exe"
+          fi
+          new_name="steamlike-${parent}${ext}"
+          echo "Renaming and uploading $file as $new_name"
+          mv "$file" "$(dirname "$file")/$new_name"
+          gh release upload ${{ github.event.inputs.version }} "$(dirname "$file")/$new_name" --repo ${{ github.repository }} --clobber
         done
