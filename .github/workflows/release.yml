@@ -29,7 +29,7 @@ jobs:
     
     - name: Build executable with PyInstaller
       run: |
-        pyinstaller -F steamlike.py
+        pyinstaller -F --clean --name steamlike steamlike.py
     
     - name: Verify executable exists
       run: |
