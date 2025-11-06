@@ -9,8 +9,22 @@ on:
         default: 'v1.0.0'
 
 jobs:
-  build-and-release:
-    runs-on: ubuntu-latest
+  build:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        include:
+          - os: ubuntu-latest
+            artifact_name: steamlike
+            asset_name: steamlike-linux
+          - os: windows-latest
+            artifact_name: steamlike.exe
+            asset_name: steamlike-windows.exe
+          - os: macos-latest
+            artifact_name: steamlike
+            asset_name: steamlike-macos
+    
+    runs-on: ${{ matrix.os }}
     permissions:
       contents: write
     
@@ -33,16 +47,33 @@ jobs:
       run: |
         pyinstaller -F --clean --name steamlike steamlike.py
     
-    - name: Verify executable exists
-      run: |
-        ls -lh dist/
-        test -f dist/steamlike
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ matrix.asset_name }}
+        path: dist/${{ matrix.artifact_name }}
+  
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
     
-    - name: Create Release and Upload Asset
+    steps:
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: artifacts
+    
+    - name: Display structure of downloaded files
+      run: ls -R artifacts
+    
+    - name: Create Release and Upload Assets
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         gh release create ${{ github.event.inputs.version }} \
           --title "Release ${{ github.event.inputs.version }}" \
           --generate-notes \
-          dist/steamlike
+          --repo ${{ github.repository }} \
+          artifacts/*/*
