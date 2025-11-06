@@ -70,6 +70,34 @@ jobs:
     
     - name: Display structure of downloaded files
       run: ls -R artifacts
+
+    - name: Rename artifacts to match their parent folder
+      shell: bash
+      run: |
+        echo "Renaming artifacts to match parent folder..."
+        for dir in artifacts/*; do
+          if [ -d "$dir" ]; then
+            base=$(basename "$dir")
+            file=$(find "$dir" -type f | head -n 1)
+            if [ -n "$file" ]; then
+              ext="${file##*.}"
+              # Add extension only if different from folder name
+              if [[ "$ext" != "$base" && "$file" == *.* ]]; then
+                newname="artifacts/${base}.${ext}"
+              else
+                newname="artifacts/${base}"
+              fi
+              mv "$file" "$newname"
+              echo "Renamed $file → $newname"
+            fi
+          fi
+        done
+
+        echo "Cleanup old folders..."
+        find artifacts/* -type d -empty -delete
+
+        echo "Final structure:"
+        ls -R artifacts
     
     - name: Create Release
       env:
