@@ -80,8 +80,16 @@ jobs:
         --generate-notes \
         --repo ${{ github.repository }}
 
+    - name: Wait before uploading
+      run: sleep 10
+
     - name: Upload Assets
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      shell: bash
       run: |
-        gh release upload ${{ github.event.inputs.version }} artifacts/*/*
+        echo "Uploading artifacts..."
+        for file in $(find artifacts -type f); do
+          echo "Uploading $file"
+          gh release upload ${{ github.event.inputs.version }} "$file" --repo ${{ github.repository }} --clobber
+        done
