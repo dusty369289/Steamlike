@@ -36,7 +36,7 @@ class GameItem:
             GameItem instance with extracted data
         """
         anchor = tag.find("a")
-        href = anchor["href"] if anchor and anchor.has_attr("href") else None
+        href = str(anchor["href"] if anchor and anchor.has_attr("href") else None)
         appid = None
         game_name = None
         if href:
@@ -135,7 +135,7 @@ def find_parent_div_id(tag: Tag) -> str | None:
     parent = tag.parent
     while parent is not None and getattr(parent, "name", None):
         if parent.name.lower() == "div" and parent.has_attr("id"):
-            return parent["id"]
+            return str(parent["id"])
         parent = parent.parent
     return None
 
@@ -252,7 +252,7 @@ class GameScanner:
         Raises:
             requests.RequestException: If the HTTP request fails
         """
-        url = url_from_id(current_item.appid)
+        url = url_from_id(str(current_item.appid))
         items = fetch_similar_divs(url)
         self.calls += 1
 
@@ -265,7 +265,7 @@ class GameScanner:
             if self._should_add_game(game_item):
                 similar_games.append(game_item)
                 self.queue.append(game_item)
-                self.added_appids.add(game_item.appid)
+                self.added_appids.add(str(game_item.appid))
 
         return similar_games
 
@@ -323,7 +323,7 @@ class GameScanner:
             if self.config.verbose:
                 print(f"Error fetching URL: {exc}")
 
-        self.searched_appids.add(current_item.appid)
+        self.searched_appids.add(str(current_item.appid))
         self.queue.remove(current_item)
 
     def _handle_already_searched(self, current_item: GameItem) -> None:
@@ -463,78 +463,89 @@ def run_scanner(config: ScanConfig, output: bool, output_file: str | None) -> No
 
 def main() -> None:
     """Parse command-line arguments and run the Steam game scanner."""
-    parser = argparse.ArgumentParser(description="Steam Similar Game Scanner")
-    parser.add_argument(
-        "-o",
-        "--output",
-        nargs="?",
-        const=True,
-        default=False,
-        help="Enable output, optionally specifying a destination (default out.txt)",
-    )
-    parser.add_argument(
-        "-m",
-        "--max-calls",
-        type=int,
-        default=50,
-        help="Maximum number of URL fetch calls to make (default 50)",
-    )
-    parser.add_argument(
-        "-g",
-        "--max-games",
-        type=int,
-        default=200,
-        help="Maximum number of games to retrieve (default 200)",
-    )
-    parser.add_argument(
-        "-c",
-        "--categories",
-        nargs="+",
-        help="Categories to save (default: released topselling newreleases freegames)",
-    )
-    parser.add_argument(
-        "-r",
-        "--random",
-        action="store_true",
-        help=(
-            "Will randomly step the queue instead of FIFO "
-            "(Can lead to less similar results)"
-        ),
-    )
-    parser.add_argument(
-        "-v",
-        "--verbose",
-        action="store_true",
-        help="Enable verbose output when scanning games",
-    )
-    parser.add_argument(
-        "appid", type=str, help="The initial Steam appid to start scanning from"
-    )
-    args = parser.parse_args()
+    if len(sys.argv) == 1:
+        appid = input("Enter the initial Steam appid to start scanning from: ").strip()
+        config = ScanConfig(
+            initial_appid=appid,
+            max_calls=50,
+            max_games=200,
+            categories=["released", "topselling", "newreleases", "freegames"],
+            randomstep=False,
+            verbose=False,
+        )
+        output = True
+        output_file = "out.txt"
+    else:
+        parser = argparse.ArgumentParser(description="Steam Similar Game Scanner")
+        parser.add_argument(
+            "-o",
+            "--output",
+            nargs="?",
+            const=True,
+            default=False,
+            help="Enable output, optionally specifying a destination (default out.txt)",
+        )
+        parser.add_argument(
+            "-m",
+            "--max-calls",
+            type=int,
+            default=50,
+            help="Maximum number of URL fetch calls to make (default 50)",
+        )
+        parser.add_argument(
+            "-g",
+            "--max-games",
+            type=int,
+            default=200,
+            help="Maximum number of games to retrieve (default 200)",
+        )
+        parser.add_argument(
+            "-c",
+            "--categories",
+            nargs="+",
+            help="Categories to save (default: released topselling newreleases freegames)",
+        )
+        parser.add_argument(
+            "-r",
+            "--random",
+            action="store_true",
+            help=(
+                "Will randomly step the queue instead of FIFO "
+                "(Can lead to less similar results)"
+            ),
+        )
+        parser.add_argument(
+            "-v",
+            "--verbose",
+            action="store_true",
+            help="Enable verbose output when scanning games",
+        )
+        parser.add_argument(
+            "appid", type=str, help="The initial Steam appid to start scanning from"
+        )
+        args = parser.parse_args()
 
-    if not args.appid:
-        print("Error: No appid provided.")
-        sys.exit(1)
+        # Parse arguments
+        output, output_file = parse_output_args(args.output)
+        categories = (
+            args.categories
+            if args.categories
+            else ["released", "topselling", "newreleases", "freegames"]
+        )
 
-    # Parse arguments
-    output, output_file = parse_output_args(args.output)
-    categories = (
-        args.categories
-        if args.categories
-        else ["released", "topselling", "newreleases", "freegames"]
-    )
-
-    # Create configuration
-    config = ScanConfig(
-        initial_appid=args.appid,
-        max_calls=args.max_calls,
-        max_games=args.max_games,
-        categories=categories,
-        randomstep=args.random,
-        verbose=args.verbose,
-    )
+        # Create configuration
+        config = ScanConfig(
+            initial_appid=args.appid,
+            max_calls=args.max_calls,
+            max_games=args.max_games,
+            categories=categories,
+            randomstep=args.random,
+            verbose=args.verbose,
+        )
 
     run_scanner(config, output, output_file)
+    if len(sys.argv) == 1:
+        input("\n\nPress Enter to exit...")
 
 
 if __name__ == "__main__":
