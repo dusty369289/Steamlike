@@ -185,6 +185,7 @@ def run(
         except requests.RequestException as exc:
             if verbose:
                 print(f"Error fetching URL {url}: {exc}")
+            searched_appids.add(current_item["appid"])
             itemqueue.remove(current_item)
             continue
 
@@ -213,7 +214,7 @@ def run(
             print(f"**SCANNED {len(items)} GAMES**")
             print(f"KEPT: {count_added}")
             print(f"TOTAL FOUND GAMES: {len(stored_games)}\n\n")
-        elif pbar is not None:
+        else:
             pbar.update(min(count_added, max_games_retrieved - len(stored_games)))
         searched_appids.add(current_item["appid"])
 
@@ -225,7 +226,7 @@ def run(
             )
             stored_games = stored_games[:max_games_retrieved]
             break
-    if pbar is not None:
+    if not verbose:
         pbar.close()
     print("\n\n\n\n")
     if breakmsg:
