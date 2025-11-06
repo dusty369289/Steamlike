@@ -91,12 +91,7 @@ jobs:
         echo "Uploading artifacts..."
         find artifacts -type f | while read file; do
           parent=$(basename "$(dirname "$file")")
-          ext=""
-          # Preserve .exe extension if present
-          if [[ "$file" == *.exe ]]; then
-            ext=".exe"
-          fi
-          new_name="steamlike-${parent}${ext}"
+          new_name="${parent}"
           echo "Renaming and uploading $file as $new_name"
           mv "$file" "$(dirname "$file")/$new_name"
           gh release upload ${{ github.event.inputs.version }} "$(dirname "$file")/$new_name" --repo ${{ github.repository }} --clobber
